@@ -1,0 +1,19 @@
+{
+	"folders": [
+		{
+			"name": "DEV",
+			"path": "../../../DEV"
+		},
+		{
+			"name": "JAVA",
+			"path": "../../../JAVA"
+		},
+		{
+			"name": "PROJEKT",
+			"path": "../.."
+		},
+		{
+			"path": "../../../AVR"
+		}
+	]
+}
