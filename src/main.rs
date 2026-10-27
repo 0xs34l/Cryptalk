@@ -1,5 +1,5 @@
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier};
-use getrandom::{SysRng, rand_core::{TryRng, UnwrapErr}};
+use getrandom::{SysRng, rand_core::{UnwrapErr}};
 fn main() {
 	let mut csprng=UnwrapErr(SysRng);
 	let secret_key=SigningKey::generate(&mut csprng);
