@@ -1,4 +1,4 @@
-use ed25519_dalek::{Signature, Signer, SigningKey, Verifier};
+use ed25519_dalek::{ Signer, SigningKey, Verifier};
 use getrandom::{SysRng, rand_core::{UnwrapErr}};
 fn main() {
 	let mut csprng=UnwrapErr(SysRng);
