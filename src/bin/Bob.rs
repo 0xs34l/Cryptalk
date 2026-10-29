@@ -47,7 +47,7 @@ fn handle_client(stream: TcpStream, secret_key: SigningKey,sender_public_key: Ve
                  continue;
             }
 
-            green!("client:");
+            green!("Alice:");
 			print!(" {}", String::from_utf8_lossy(&msg_buf));
 
 		}
