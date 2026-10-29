@@ -1,25 +1,48 @@
 use std::io::{Write, stdout, stdin, Read};
 use std::net::TcpStream;
 use std::thread;
+use ed25519_dalek::{ Signer, SigningKey, Signature, VerifyingKey, Verifier};
+use getrandom::{SysRng, rand_core::{UnwrapErr}};
 
-fn handle_server(stream:TcpStream){
+fn handle_server(stream:TcpStream , secret_key: SigningKey,sender_public_key: VerifyingKey){
 	let mut write_stream:TcpStream=stream.try_clone().unwrap();
 	let mut read_stream=stream;
-	let mut buf=[0u8;1024];
-	let temp_buf=[0u8;1024];
 
 	//reading thread
 	thread::spawn(move || {
 		loop{
-			let bytes_read=read_stream.read(&mut buf).unwrap();
-			if bytes_read==0 {
+			let mut len_buf = [0u8; 4];
+            if read_stream.read_exact(&mut len_buf).is_err() {
 				println!("Connection disconnected");
-				std::process::exit(0);
-			}
-			if buf!=temp_buf{
-				print!("server: {}",String::from_utf8_lossy(&buf[..bytes_read]));
-			}
-			buf=[0u8;1024];
+				break;
+            }
+
+            let msg_len = u32::from_be_bytes(len_buf) as usize;
+            if msg_len > 10 * 1024 * 1024 {
+				println!("Message too large");
+                break;
+           }
+
+            let mut msg_buf = vec![0u8; msg_len];
+            if read_stream.read_exact(&mut msg_buf).is_err() {
+				println!("Failed to read message");
+                break;
+            }
+
+            let mut signature_buf = [0u8; 64];
+            if read_stream.read_exact(&mut signature_buf).is_err() {
+				println!("Failed to read signature");
+                break;
+           }
+
+			let signature = Signature::from_bytes(&signature_buf);
+            if sender_public_key.verify(&msg_buf, &signature).is_err() {
+				 println!("Invalid signature!");
+				  continue;
+				}
+
+			print!("server: {}", String::from_utf8_lossy(&msg_buf));	
+
 		}
 	});
 
@@ -27,14 +50,20 @@ fn handle_server(stream:TcpStream){
 	let mut message=String::new();
 	loop{
 		stdout().flush().unwrap();
-		stdin().read_line(&mut message).unwrap();
-		if message!="".to_string(){
+		if stdin().read_line(&mut message).unwrap_or(0) == 0 {
+			break;}
+		if !message.trim().is_empty(){
 			print!("\x1B[1A\x1B[2K\r");
 			stdout().flush().unwrap();
 			print!("client: {}",message);
-			write_stream.write_all(message.as_bytes()).unwrap();
-			message.clear();
+			let signature=secret_key.sign(message.as_bytes());
+			let message_bytes= message.as_bytes();
+			let len=(message_bytes.len() as u32).to_be_bytes();
+			write_stream.write_all(&len).unwrap();
+			write_stream.write_all(message_bytes).unwrap();
+			write_stream.write_all(&signature.to_bytes()).unwrap();
 		}
+	    message.clear();
 	}
 }
 
@@ -47,14 +76,26 @@ fn main(){
 			break;
 		}
 	}
-	loop{
-		let mut buffer=[0u8;1024];
-		let bytes_read=stream.read(&mut buffer[..1024]).unwrap();
-		if bytes_read==9 {
+	
+		let mut buffer=[0u8;9];
+		stream.read_exact(&mut buffer).unwrap();
+		if &buffer == b"Connected" {
 			println!("Connected Successfully!");
-			break;
+		} else {
+			println!("Unexpected server response");
+			return;
 		}
-	}
-	handle_server(stream);
+
+	    let mut csprng=UnwrapErr(SysRng);
+	    let secret_key=SigningKey::generate(&mut csprng);
+		let public_key=secret_key.verifying_key();
+
+		stream.write_all(public_key.as_bytes()).unwrap();
+
+		let mut sender_key_bytes = [0u8; 32];
+		stream.read_exact(&mut sender_key_bytes).unwrap();
+		let sender_public_key = VerifyingKey::from_bytes(&sender_key_bytes).unwrap();
+			
+	handle_server(stream, secret_key, sender_public_key);
     
 }
