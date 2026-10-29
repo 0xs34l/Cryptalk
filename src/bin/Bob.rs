@@ -62,7 +62,7 @@ fn handle_client(stream: TcpStream, secret_key: SigningKey,sender_public_key: Ve
 		if !message.trim().is_empty(){
 			print!("\x1B[1A\x1B[2K\r");//ASCII
 			stdout().flush().unwrap();
-			blue!("server: ");
+			blue!("Bob: ");
 			print!("{}",message);
 			let message_bytes = message.as_bytes();
             let signature = secret_key.sign(message_bytes);
