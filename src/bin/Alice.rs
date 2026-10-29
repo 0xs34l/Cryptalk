@@ -46,7 +46,7 @@ fn handle_server(stream:TcpStream , secret_key: SigningKey,sender_public_key: Ve
 				  continue;
 				}
 
-			blue!("server: ");
+			blue!("Bob: ");
 			print!("{}", String::from_utf8_lossy(&msg_buf));
 
 		}
